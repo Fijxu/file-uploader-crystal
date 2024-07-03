@@ -1,0 +1,19 @@
+name: file-uploader
+version: 0.1.0
+
+authors:
+  - Fijxu <fijxu@nadeko.net>
+
+targets:
+  file-uploader:
+    main: src/file-uploader.cr
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal
+  sqlite3:
+    github: crystal-lang/crystal-sqlite3
+
+crystal: '>= 1.12.2'
+
+license: MIT
