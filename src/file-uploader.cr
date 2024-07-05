@@ -1,7 +1,10 @@
 require "http"
 require "kemal"
 require "yaml"
-require "mime"
+# require "mime"
+
+require "./utils"
+require "./config"
 
 # macro error(message)
 #     env.response.content_type = "application/json"
@@ -9,20 +12,6 @@ require "mime"
 #     error_message = {"error" => {{message}}}.to_json
 # 	error_message
 #   end
-
-class Config
-  include YAML::Serializable
-
-  property files : String = "./files"
-  property filename_lenght : Int8 = 3
-
-  def self.load
-    config_file = "config/config.yml"
-    config_yaml = File.read(config_file)
-    config = Config.from_yaml(config_yaml)
-    config
-  end
-end
 
 CONFIG = Config.load
 
@@ -35,13 +24,8 @@ if !Dir.exists?("#{CONFIG.files}")
   end
 end
 
-def random_string : String
-  retardation = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  res = IO::Memory.new
-  CONFIG.filename_lenght.times do
-    "".rjust(res, 1, retardation[Random.rand(62)])
-  end
-  res.to_s
+get "/" do |env|
+  render "src/views/index.ecr"
 end
 
 # TODO: Error checking later
@@ -49,11 +33,10 @@ post "/upload" do |env|
   filename = ""
   extension = ""
   HTTP::FormData.parse(env.request) do |upload|
-    # if upload.filename.nil?
-    #   error("No file provided")
-    # end
+    next if upload.filename.nil? || upload.filename.to_s.empty?
+    pp upload
     extension = File.extname("#{upload.filename}")
-    filename = random_string()
+    filename = Utils.random_string(CONFIG.filename_lenght)
     # filename = "#{Base64.urlsafe_encode("#{Random.rand(9999 % 1000)}", padding = false)}.#{upload.filename.to_s[extension + 1..]}"
     # Be sure to check if file.filename is not empty otherwise it'll raise a compile time error
     if !filename.is_a?(String)
@@ -66,10 +49,17 @@ post "/upload" do |env|
     end
   end
   env.response.content_type = "application/json"
-  JSON.build do |j|
-    j.object do
-      j.field "link", "#{env.request.headers["Host"]}/#{filename + extension}"
+  if !filename.empty?
+    JSON.build do |j|
+      j.object do
+        j.field "link", "#{env.request.headers["Host"]}/#{filename + extension}"
+      end
     end
+  else
+    env.response.content_type = "application/json"
+    env.response.status_code = 403
+    error_message = {"error" => "No file"}.to_json
+    error_message
   end
 end
 
@@ -77,7 +67,7 @@ get "/:filename" do |env|
   begin
     if !File.extname(env.params.url["filename"]).empty?
       send_file env, "#{CONFIG.files}/#{env.params.url["filename"]}"
-	  next
+      next
     end
     dir = Dir.new("#{CONFIG.files}")
     dir.each do |filename|
@@ -85,12 +75,34 @@ get "/:filename" do |env|
         send_file env, "#{CONFIG.files}/#{env.params.url["filename"]}" + File.extname(filename)
       end
     end
-	raise "Fuck"
+    raise ""
   rescue
     env.response.content_type = "text/plain"
     env.response.status_code = 403
     "File does not exist"
   end
 end
+
+# delete "/:filename" do |env|
+#   begin
+#     if !File.extname(env.params.url["filename"]).empty?
+#       File.delete?("#{CONFIG.files}/#{env.params.url["filename"]}")
+# 	  "File deleted successfully"
+# 	  next
+#     end
+#     dir = Dir.new("#{CONFIG.files}")
+#     dir.each do |filename|
+#       if filename.starts_with?("#{env.params.url["filename"]}")
+#         File.delete?("#{CONFIG.files}/#{env.params.url["filename"]}" + File.extname(filename))
+# 		"File deleted successfully"
+#       end
+#     end
+# 	raise ""
+#   rescue
+#     env.response.content_type = "text/plain"
+#     env.response.status_code = 403
+#     "File does not exist"
+#   end
+# end
 
 Kemal.run
