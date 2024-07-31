@@ -5,6 +5,9 @@ class Config
 
   property files : String = "./files"
   property filename_lenght : Int8 = 3
+  property port : UInt16 = 8080
+  property unix_socket : String?
+  property delete_files_after : Int32 = 7
 
   def self.load
     config_file = "config/config.yml"

@@ -1,17 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>File Upload Example</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>File Upload</title>
+	<style>
+		body {
+			background-color: #111;
+			color: aliceblue
+		}
+
+		.container {
+			margin: 0 auto;
+			max-width: 700px;
+		}
+
+		.jumbotron {
+			margin: 60px 0;
+			text-align: center;
+			transition: width .5s, height .5s, margin .5s, padding .5s;
+		}
+
+		#progressContainer {
+			margin-top: 10px;
+			width: 100%;
+			background-color: #343434;
+			border: 1px solid #ccc;
+		}
+
+		#progressBar {
+			height: 20px;
+			width: 0;
+			background-color: #6d95bb;
+		}
+	</style>
 </head>
+
 <body>
+	<div class="container">
+	<div class="jumbotron">
+		<div id="dropZone" class="drop-zone">
+    <p>Drag and drop a file here or click to select</p>
+    <input type="file" id="fileInput" name="file" style="display: none;">
+</div>
+		<label for="fileInput"></label>
+		<input type="file" id="fileInput">
+		<button id="uploadButton">Upload File</button>
+		<div id="progressContainer">
+			<div id="progressBar"></div>
+		</div>
+		<div id="linkContainer"></div>
+	</div>
+	</div>
 
-<form action="/upload" method="post" enctype="multipart/form-data">
-    <label for="file">Choose file:</label>
-    <input type="file" id="file" name="filename" accept=".jpg,.jpeg,.png">
-    <br><br>
-    <input type="submit" value="Upload File" name="submit">
-</form>
+	<script>
+		document.getElementById('uploadButton').addEventListener('click', () => {
+			const fileInput = document.getElementById('fileInput');
+			const file = fileInput.files[0];
 
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const xhr = new XMLHttpRequest();
+			xhr.open('POST', 'upload', true);
+
+			// Track upload progress
+			xhr.upload.addEventListener('progress', (event) => {
+				if (event.lengthComputable) {
+					const percentComplete = (event.loaded / event.total) * 100;
+					document.getElementById('progressBar').style.width = percentComplete + '%';
+					document.getElementById('progressBar').textContent = Math.round(percentComplete) + '%';
+				}
+			});
+
+			// Handle upload completion
+			xhr.addEventListener('load', () => {
+				if (xhr.status === 200) {
+					const response = JSON.parse(xhr.responseText);
+					const linkContainer = document.getElementById('linkContainer');
+					linkContainer.innerHTML = `<a href="${response.link}" target="_blank">View Uploaded File</a>`;
+				} else if (xhr.status === 403) {
+					const response = JSON.parse(xhr.responseText);
+					const linkContainer = document.getElementById('linkContainer');
+					linkContainer.innerHTML = `<a target="_blank">ERROR: ${response.error}</a>`;
+				}
+			});
+
+			// Handle upload error
+			xhr.addEventListener('error', () => {
+				console.error('Upload error');
+			});
+
+			xhr.send(formData);
+		});
+	</script>
 </body>
+
 </html>
